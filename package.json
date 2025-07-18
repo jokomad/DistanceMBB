@@ -11,7 +11,7 @@
     "node-fetch": "^2.7.0"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": "18.20.3"
   },
   "keywords": [
     "bollinger-bands",

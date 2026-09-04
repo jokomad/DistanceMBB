@@ -1,6 +1,8 @@
 const fetch = require('node-fetch');
 const fs = require('fs');
 
+const http = require('http');
+
 // Sleep function
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -271,7 +273,19 @@ function startMinuteScheduler() {
     }, 1000); // Check every second
 }
 
+// Health check HTTP server for hosting platforms (e.g. Koyeb)
+const PORT = process.env.PORT || 8000;
+const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('OK');
+});
+
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Health check server listening on port ${PORT}`);
+});
+
 // Start the application
 console.log('Starting Bollinger Bands analyzer...');
 console.log('Data will be fetched every minute at 3 seconds past the minute');
 startMinuteScheduler();
+

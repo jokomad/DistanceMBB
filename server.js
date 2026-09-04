@@ -6,16 +6,10 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Log results to file
-function logToFile(message) {
+// Log results to console
+function logToConsole(message) {
     const timestamp = new Date().toLocaleString();
-    const logMessage = `[${timestamp}] ${message}\n`;
-
-    try {
-        fs.appendFileSync('bb_analysis.log', logMessage);
-    } catch (error) {
-        console.error('Error writing to log file:', error);
-    }
+    console.log(`[${timestamp}] ${message}`);
 }
 
 
@@ -167,7 +161,7 @@ async function fetchAndAnalyzeData() {
             const candles1mMap = await batchFetch1MinuteCandles(usdtSymbols);
 
             // Log start of analysis
-            logToFile(`=== BB Analysis Started - ${usdtPairs.length} symbols ===`);
+            logToConsole(`=== BB Analysis Started - ${usdtPairs.length} symbols ===`);
 
             // Track highest positive and negative distances for current analysis
             let currentHighestPositive = { symbol: null, distance: -Infinity, timestamp: null };
@@ -205,13 +199,13 @@ async function fetchAndAnalyzeData() {
 
                     // Log the Bollinger Band values for the previous completed candle with distance to middle
                     const candleTime = new Date(previousBand.timestampMs).toISOString();
-                    logToFile(`${item.symbol}: Previous Candle: ${candleTime} | BB Upper: ${previousBand.upper.toFixed(6)} | BB Middle: ${previousBand.middle.toFixed(6)} | BB Lower: ${previousBand.lower.toFixed(6)} | Close: ${previousBand.close.toFixed(6)} | Distance to Middle: ${percentToMiddle.toFixed(2)}%`);
+                    logToConsole(`${item.symbol}: Previous Candle: ${candleTime} | BB Upper: ${previousBand.upper.toFixed(6)} | BB Middle: ${previousBand.middle.toFixed(6)} | BB Lower: ${previousBand.lower.toFixed(6)} | Close: ${previousBand.close.toFixed(6)} | Distance to Middle: ${percentToMiddle.toFixed(2)}%`);
                 } else {
-                    logToFile(`${item.symbol}: No BB data available (need at least 2 candles)`);
+                    logToConsole(`${item.symbol}: No BB data available (need at least 2 candles)`);
                 }
             });
 
-            logToFile(`=== BB Analysis Completed - ${usdtPairs.length} symbols processed ===\n`);
+            logToConsole(`=== BB Analysis Completed - ${usdtPairs.length} symbols processed ===`);
 
             // Read all-time records
             const allTimeRecords = readAllTimeRecords();
@@ -222,44 +216,27 @@ async function fetchAndAnalyzeData() {
 
             // Prepare Telegram message
             if (currentHighestPositive.symbol && currentHighestNegative.symbol) {
-                let telegramMessage = `${currentHighestPositive.symbol} ${currentHighestPositive.distance.toFixed(2)}% above\n\n${currentHighestNegative.symbol} ${currentHighestNegative.distance.toFixed(2)}% below\n\n`;
-
-                // Add all-time records to message
-                if (allTimeRecords.highestPositive.symbol) {
-                    telegramMessage += `All-time high above: ${allTimeRecords.highestPositive.symbol} ${allTimeRecords.highestPositive.distance.toFixed(2)}%`;
-                    if (allTimeRecords.highestPositive.timestamp) {
-                        telegramMessage += ` (${new Date(allTimeRecords.highestPositive.timestamp).toLocaleString()})`;
-                    }
-                    telegramMessage += '\n';
-                }
-
-                if (allTimeRecords.highestNegative.symbol) {
-                    telegramMessage += `All-time high below: ${allTimeRecords.highestNegative.symbol} ${allTimeRecords.highestNegative.distance.toFixed(2)}%`;
-                    if (allTimeRecords.highestNegative.timestamp) {
-                        telegramMessage += ` (${new Date(allTimeRecords.highestNegative.timestamp).toLocaleString()})`;
-                    }
-                }
+                const posSign = currentHighestPositive.distance >= 0 ? '+' : '';
+                const negSign = currentHighestNegative.distance >= 0 ? '+' : '';
+                const telegramMessage = `${currentHighestPositive.symbol} ${posSign}${currentHighestPositive.distance.toFixed(2)}%\n${currentHighestNegative.symbol} ${negSign}${currentHighestNegative.distance.toFixed(2)}%`;
 
                 // Update all-time records if new highs found
                 if (isNewAllTimePositive || isNewAllTimeNegative) {
                     if (isNewAllTimePositive) {
                         allTimeRecords.highestPositive = currentHighestPositive;
-                        logToFile(`NEW ALL-TIME HIGH POSITIVE: ${currentHighestPositive.symbol} ${currentHighestPositive.distance.toFixed(2)}% at ${currentHighestPositive.timestamp}`);
+                        logToConsole(`NEW ALL-TIME HIGH POSITIVE: ${currentHighestPositive.symbol} ${currentHighestPositive.distance.toFixed(2)}% at ${currentHighestPositive.timestamp}`);
                     }
                     if (isNewAllTimeNegative) {
                         allTimeRecords.highestNegative = currentHighestNegative;
-                        logToFile(`NEW ALL-TIME HIGH NEGATIVE: ${currentHighestNegative.symbol} ${currentHighestNegative.distance.toFixed(2)}% at ${currentHighestNegative.timestamp}`);
+                        logToConsole(`NEW ALL-TIME HIGH NEGATIVE: ${currentHighestNegative.symbol} ${currentHighestNegative.distance.toFixed(2)}% at ${currentHighestNegative.timestamp}`);
                     }
 
                     // Write updated records to file
                     writeAllTimeRecords(allTimeRecords);
-
-                    // Add new record notification to message
-                    telegramMessage += '\n\n🚨 NEW ALL-TIME RECORD! 🚨';
                 }
 
                 await sendTelegramMessage(telegramMessage);
-                logToFile(`Telegram message sent: Current positive: ${currentHighestPositive.symbol} ${currentHighestPositive.distance.toFixed(2)}%, Current negative: ${currentHighestNegative.symbol} ${currentHighestNegative.distance.toFixed(2)}%`);
+                logToConsole(`Telegram message sent:\n${telegramMessage}`);
             }
 
             // Memory cleanup
@@ -273,7 +250,7 @@ async function fetchAndAnalyzeData() {
         }
     } catch (error) {
         console.error('Error fetching data:', error);
-        logToFile(`ERROR: ${error.message}`);
+        logToConsole(`ERROR: ${error.message}`);
     }
 }
 
